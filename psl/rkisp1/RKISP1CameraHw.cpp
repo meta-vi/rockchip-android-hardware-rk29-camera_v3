@@ -288,7 +288,7 @@ int64_t RKISP1CameraHw::getMinFrameDurationNs(camera3_stream_t* stream) {
 camera3_stream_t*
 RKISP1CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams)
 {
-    static const int64_t stillCaptureCaseThreshold = 33400000LL; // 33.4 ms
+    int64_t stillCaptureCaseThreshold = 33400000LL; // 33.4 ms
     camera3_stream_t* jpegStream = nullptr;
 
     for (auto* s : streams) {
@@ -301,6 +301,8 @@ RKISP1CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& 
 
         if (s->format == HAL_PIXEL_FORMAT_BLOB)
             jpegStream = s;
+        if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
+            stillCaptureCaseThreshold = getMinFrameDurationNs(s);
     }
 
     // It means that sensor can output frames with different sizes and fps
