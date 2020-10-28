@@ -990,6 +990,7 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
 
         profiles->mUseEntry = false;
         int attIndex = 2;
+        const char *cam_name = nullptr;
         if (atts[attIndex]) {
             if (strcmp(atts[attIndex], "name") == 0) {
                 profiles->mUseEntry = isSensorPresent(profiles->mSensorNames,
@@ -1002,6 +1003,7 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
                          __FUNCTION__, mSensorIndex, atts[attIndex + 1],
                          atts[attIndex + 3], profiles->mSensorNames.size());
                     mCameraIdToSensorName.insert(make_pair(mSensorIndex, std::string(atts[attIndex + 1])));
+                    cam_name = atts[attIndex + 1];
                 }
             } else {
                 LOGE("unknown attribute atts[%d] = %s", attIndex, atts[attIndex]);
@@ -1014,8 +1016,13 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
 
         if (profiles->mUseEntry
                 && mSensorIndex >= mStaticMeta.size()
-                && mStaticMeta.size() < profiles->mSensorNames.size())
+                && mStaticMeta.size() < profiles->mSensorNames.size()) {
+            if(cam_name != nullptr) {
+                if(mSensorIndex == 0 && !strcmp(cam_name, "imx219"))
+                    property_set("media.settings.xml", "/vendor/etc/media_profiles_imx219.xml");
+            }
             addCamera(mSensorIndex);
+        }
     } else if (strcmp(name, "Supported_hardware") == 0) {
         mCurrentDataField = FIELD_SUPPORTED_HARDWARE;
         mItemsCount = -1;
