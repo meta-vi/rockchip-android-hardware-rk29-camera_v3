@@ -40,6 +40,7 @@
 #define MAX_METADATA_NAME_LENTGTH 128
 #define MAX_METADATA_ATTRIBUTE_NAME_LENTGTH 128
 #define MAX_METADATA_ATTRIBUTE_VALUE_LENTGTH 6144
+#define MEDIA_SETTINGS_XML_PROP "media.settings.xml"
 
 NAMESPACE_DECLARATION {
 CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
@@ -1004,8 +1005,21 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
                 && mSensorIndex >= mStaticMeta.size()
                 && mStaticMeta.size() < profiles->mSensorNames.size()) {
             if(cam_name != nullptr) {
-                if(mSensorIndex == 0 && !strcmp(cam_name, "imx219"))
-                    property_set("media.settings.xml", "/vendor/etc/media_profiles_imx219.xml");
+                if(mSensorIndex == 0 && !strcmp(cam_name, "imx219")) {
+                    property_set(MEDIA_SETTINGS_XML_PROP, "/vendor/etc/media_profiles_imx_ov.xml");
+                } else if(mSensorIndex == 1) {
+                    char prop_xml[PROPERTY_VALUE_MAX];
+                    property_get(MEDIA_SETTINGS_XML_PROP, prop_xml, "");
+                    if(strcmp(prop_xml, "/vendor/etc/media_profiles_imx_ov.xml") == 0) {
+                        if(strcmp(cam_name, "imx219") == 0) {
+                            property_set(MEDIA_SETTINGS_XML_PROP, "/vendor/etc/media_profiles_imx_imx.xml");
+                        }
+                    } else {
+                        if(strcmp(cam_name, "ov5647") == 0) {
+                            property_set(MEDIA_SETTINGS_XML_PROP, "/vendor/etc/media_profiles_ov_ov.xml");
+                        }
+                    }
+                }
             }
             addCamera(mSensorIndex);
         }
