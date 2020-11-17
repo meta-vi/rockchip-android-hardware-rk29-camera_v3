@@ -1181,7 +1181,10 @@ std::string PSLConfParser::getSensorMediaDevice(int cameraId)
 
     const std::vector<struct SensorDriverDescriptor>& sensorInfo = PlatformData::getCameraHWInfo()->mSensorInfo;
     for (auto it = sensorInfo.begin(); it != sensorInfo.end(); ++it) {
-        if((*it).mSensorName == sensorName)
+        string moduleIndex = "m0" + std::to_string(cameraId);
+        LOGI("@%s : cameraId: %d, name: %s, sensor name %s, index %s", __FUNCTION__,
+                cameraId, sensorName.c_str(), (*it).mSensorName.c_str(), (*it).mModuleIndexStr.c_str());
+        if((*it).mSensorName == sensorName && (*it).mModuleIndexStr == moduleIndex)
             return (*it).mParentMediaDev;
     }
     LOGE("@%s : Can't get SensorMediaDevice, cameraId: %d, sensorName:%s", __FUNCTION__,
