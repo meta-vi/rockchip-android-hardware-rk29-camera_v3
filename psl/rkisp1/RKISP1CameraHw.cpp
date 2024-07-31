@@ -292,7 +292,8 @@ int64_t RKISP1CameraHw::getMinFrameDurationNs(camera3_stream_t* stream) {
 camera3_stream_t*
 RKISP1CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams)
 {
-    int64_t stillCaptureCaseThreshold = 33400000LL; // 33.4 ms
+    // int64_t stillCaptureCaseThreshold = 33400000LL; // 33.4 ms
+    int64_t stillCaptureCaseThreshold = 19900000LL; // 20 ms
     camera3_stream_t* jpegStream = nullptr;
 
     for (auto* s : streams) {
@@ -353,6 +354,7 @@ RKISP1CameraHw::checkNeedReconfig(UseCase newUseCase, std::vector<camera3_stream
     mGCM.getHwPathSize("rkisp1_mainpath", pathSize);
     mImguUnit->getConfigedHwPathSize("rkisp1_mainpath", lastPathSize);
     mConfigChanged = pathSize > lastPathSize ? true : false;
+    ALOGI("@%s : mConfigChanged %d, %d, %d", __FUNCTION__, mConfigChanged, pathSize, lastPathSize);
 }
 
 status_t
@@ -396,12 +398,14 @@ RKISP1CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     camera3_stream_t* stillStream = findStreamForStillCapture(activeStreams);
 
     for (unsigned int i = 0; i < activeStreams.size(); i++) {
+        ALOGI("%s: Active stream %dx%d, 0x%x", __FUNCTION__, 
+            activeStreams[i]->width, activeStreams[i]->height, activeStreams[i]->format);
         activeStreams[i]->max_buffers = maxBufs;
         activeStreams[i]->usage |= usage;
 
         if (activeStreams[i] != stillStream) {
-            mStreamsVideo.push_back(activeStreams[i]);
             mStreamsStill.push_back(activeStreams[i]);
+            mStreamsVideo.push_back(activeStreams[i]);
         } else if (stillStream) {
             // always insert BLOB as fisrt stream if exists
             LOGI("%s: find still stream %dx%d, 0x%x", __FUNCTION__, stillStream->width,
@@ -415,7 +419,7 @@ RKISP1CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
         mUseCase = USECASE_STILL;
     }
 
-    LOGI("%s: select usecase: %s, video/still stream num: %zu/%zu", __FUNCTION__,
+    ALOGI("%s: select usecase: %s, video/still stream num: %zu/%zu", __FUNCTION__,
             mUseCase ? "USECASE_VIDEO" : "USECASE_STILL", mStreamsVideo.size(), mStreamsStill.size());
     status = doConfigureStreams(mUseCase, operation_mode, ANDROID_SENSOR_TEST_PATTERN_MODE_OFF);
 
@@ -484,7 +488,7 @@ RKISP1CameraHw::processRequest(Camera3Request* request, int inFlightCount)
 
     if (newUseCase != mUseCase || testPatternMode != mTestPatternMode ||
         (newUseCase == USECASE_TUNING && mTuningSizeChanged)) {
-        LOGI("%s: request %d need reconfigure, infilght %d, usecase %d -> %d", __FUNCTION__,
+        ALOGI("%s: request %d need reconfigure, infilght %d, usecase %d -> %d", __FUNCTION__,
                 request->getId(), inFlightCount, mUseCase, newUseCase);
         if (inFlightCount > 1) {
             return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED;
@@ -588,6 +592,33 @@ status_t RKISP1CameraHw::doConfigureStreams(UseCase newUseCase,
                                               mStreamsStill : mStreamsVideo;
     mTuningSizeChanged = false;
 
+
+    //>>> MetaVision: Set input resolution depend on output stream resolution
+    // 1. Get max output resolution
+    int maxW = 0;
+    int maxH = 0;
+    for (unsigned int i = 0; i < mStreamsStill.size(); ++i) {
+        camera3_stream_t* stream = mStreamsStill.at(i);
+        LOGI("@%s RKISP1CameraHw: check max input resolution: %d, %dx%d", __FUNCTION__, 
+            stream->stream_type, stream->width, stream->height);
+        if (stream->stream_type == CAMERA3_STREAM_OUTPUT ||
+            stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
+            if (maxW < stream->width) maxW = stream->width;
+            if (maxH < stream->height) maxH = stream->height;
+        }
+    }
+    for (unsigned int i = 0; i < mStreamsVideo.size(); ++i) {
+        camera3_stream_t* stream = mStreamsVideo.at(i);
+        LOGI("@%s RKISP1CameraHw: check max input resolution: %d, %dx%d", __FUNCTION__,
+            stream->stream_type, stream->width, stream->height);
+        if (stream->stream_type == CAMERA3_STREAM_OUTPUT ||
+            stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
+            if (maxW < stream->width) maxW = stream->width;
+            if (maxH < stream->height) maxH = stream->height;
+        }
+    }
+    //<<< MetaVision: Set input resolution depend on output stream resolution
+
     // consider USECASE_TUNING first
     if(newUseCase == USECASE_TUNING) {
         streams.push_back(&mFakeRawStream);
@@ -605,7 +636,7 @@ status_t RKISP1CameraHw::doConfigureStreams(UseCase newUseCase,
 
     mGCM.enableMainPathOnly(newUseCase == USECASE_STILL ? true : false);
 
-    status_t status = mGCM.configStreams(streams, operation_mode, testPatternMode);
+    status_t status = mGCM.configStreams(streams, operation_mode, testPatternMode, maxW, maxH);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");
         return status;

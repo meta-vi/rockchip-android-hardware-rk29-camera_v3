@@ -2325,90 +2325,112 @@ void GraphConfig::cal_crop(uint32_t &src_w, uint32_t &src_h, uint32_t &dst_w, ui
          ratio_src, ratio_dst,src_w, src_h, dst_w, dst_h);
 }
 
-status_t GraphConfig::selectSensorOutputFormat(int32_t cameraId, int &w, int &h, uint32_t &format) {
-    camera3_stream_t* stream = NULL;
-    w = h = 0;
+status_t GraphConfig::selectSensorOutputFormat(int32_t cameraId, int maxW, int maxH,int &w, int &h, uint32_t &format) {
+    // camera3_stream_t* stream = NULL;
+    // w = h = 0;
 
-    for (auto it = mStreamToSinkIdMap.begin(); it != mStreamToSinkIdMap.end(); ++it) {
-        //dump raw case: sensor output should satisfy rawStream first
-        if (it->second == GCSS_KEY_IMGU_RAW) {
-            stream = it->first;
-            // setprop persist.vendor.camera.dump 16 will produce this case
-            if(stream->width == 0 || stream->height == 0)
-                continue;
-            break;
-        }
+    // for (auto it = mStreamToSinkIdMap.begin(); it != mStreamToSinkIdMap.end(); ++it) {
+    //     //dump raw case: sensor output should satisfy rawStream first
+    //     if (it->second == GCSS_KEY_IMGU_RAW) {
+    //         stream = it->first;
+    //         // setprop persist.vendor.camera.dump 16 will produce this case
+    //         if(stream->width == 0 || stream->height == 0)
+    //             continue;
+    //         break;
+    //     }
 
-        //normal case: get the app stream which map to mp, this stream size decide the
-        //sensor output
-        if (it->second == GCSS_KEY_IMGU_VIDEO) {
-            stream = it->first;
-        }
-    }
-    if (!stream) {
-        LOGE("@%s : App stream is Null", __FUNCTION__);
-        return UNKNOWN_ERROR;
-    }
+    //     //normal case: get the app stream which map to mp, this stream size decide the
+    //     //sensor output
+    //     if (it->second == GCSS_KEY_IMGU_VIDEO) {
+    //         stream = it->first;
+    //     }
+    // }
+    // if (!stream) {
+    //     LOGE("@%s : App stream is Null", __FUNCTION__);
+    //     return UNKNOWN_ERROR;
+    // }
 
-    if (0 == mAvailableSensorFormat.size()) {
-        LOGE("@%s : Emum sensor frame size may failed", __FUNCTION__);
-        return UNKNOWN_ERROR;
-    }
+    // if (0 == mAvailableSensorFormat.size()) {
+    //     LOGE("@%s : Emum sensor frame size may failed", __FUNCTION__);
+    //     return UNKNOWN_ERROR;
+    // }
 
-    // default sensor Mbus code
-    /* TODO  add format select logic, now just pick the first one*/
+    // // default sensor Mbus code
+    // /* TODO  add format select logic, now just pick the first one*/
+    // format = mAvailableSensorFormat.begin()->first;
+
+    // const RKISP1CameraCapInfo *cap = getRKISP1CameraCapInfo(cameraId);
+    // const std::vector<struct FrameSize_t>& tuningSupportSize = cap->getSupportTuningSizes();
+    // ALOGI("@%s selectSensorOutputFormat: stream(%dx%d)", __FUNCTION__, stream->width, stream->height);
+
+    // std::vector<struct SensorFrameSize> &frameSize = mAvailableSensorFormat[format];
+    // // travel the frameSize from small to large to get the suitable sensor output
+    // for (auto it = frameSize.begin(); it != frameSize.end(); ++it) {
+    //     ALOGI("travel the frameSize (%dx%d), sensor type %d", (*it).max_width, (*it).max_height, cap->sensorType());
+    //     if((*it).max_width >= stream->width &&
+    //        (*it).max_height >= stream->height) {
+    //         //for SOC Sensor
+    //         if(cap->sensorType() == SENSOR_TYPE_SOC) {
+    //             w = (*it).max_width;
+    //             h = (*it).max_height;
+    //             LOGI("@%s Select sensor format: code 0x%x:%s,  Res(%dx%d)", __FUNCTION__,
+    //                  format, gcu::pixelCode2String(format).c_str(), (*it).max_width, (*it).max_height);
+    //             break;
+    //         }
+    //         //for RAW Sensor
+    //         // travel the tuningSupportSize to check the sensor output size is supported
+    //         for (auto iter = tuningSupportSize.begin(); iter != tuningSupportSize.end(); ++iter) {
+    //             ALOGI("@%s : tuningSupportSize: %dx%d", __FUNCTION__, (*iter).width, (*iter).height);
+    //             if((*it).max_width == (*iter).width &&
+    //                (*it).max_height == (*iter).height) {
+    //                 LOGD("@%s Select sensor format: code 0x%x:%s,  Res(%dx%d)", __FUNCTION__,
+    //                      format, gcu::pixelCode2String(format).c_str(), (*it).max_width, (*it).max_height);
+    //                 w = (*it).max_width;
+    //                 h = (*it).max_height;
+    //                 break;
+    //             }
+    //             if(iter == tuningSupportSize.end())
+    //                 LOGI("@%s : Tuning not supprt the sensor output size %dx%d", __FUNCTION__,
+    //                      (*it).max_width, (*it).max_height);
+    //         }
+    //         // sensor fmt found
+    //         if(w != 0 && h != 0)
+    //             break;
+    //     }
+    // }
+
+    // if(frameSize.back().max_width < stream->width ||
+    //    frameSize.back().max_height < stream->height) {
+    //     ALOGE("@%s : App stream size(%dx%d) larger than Sensor full size(%dx%d), Check camera3_profiles.xml",
+    //          __FUNCTION__, stream->width, stream->height, frameSize.back().max_width, frameSize.back().max_height);
+    //     return UNKNOWN_ERROR;
+    // }
+    // if((w == 0 || h == 0) && frameSize.size() != 0) {
+    //     w = frameSize.back().max_width;
+    //     h = frameSize.back().max_height;
+    //     ALOGD("@%s : Can't find the tuning support sensor size, select sensor full size(%dx%d)",
+    //          __FUNCTION__, w, h);
+    // }
+
+    // MetaVision: get nereast resolution
+    w = maxW;
+    h = maxH;
+    int best_dist = -1;
     format = mAvailableSensorFormat.begin()->first;
-
-    const RKISP1CameraCapInfo *cap = getRKISP1CameraCapInfo(cameraId);
-    const std::vector<struct FrameSize_t>& tuningSupportSize = cap->getSupportTuningSizes();
-
-    std::vector<struct SensorFrameSize> &frameSize = mAvailableSensorFormat[format];
-    // travel the frameSize from small to large to get the suitable sensor output
-    for (auto it = frameSize.begin(); it != frameSize.end(); ++it) {
-        if((*it).max_width >= stream->width &&
-           (*it).max_height >= stream->height) {
-            //for SOC Sensor
-            if(cap->sensorType() == SENSOR_TYPE_SOC) {
-                w = (*it).max_width;
-                h = (*it).max_height;
-                LOGD("@%s Select sensor format: code 0x%x:%s,  Res(%dx%d)", __FUNCTION__,
-                     format, gcu::pixelCode2String(format).c_str(), (*it).max_width, (*it).max_height);
-                break;
+    for (const auto& pair : mAvailableSensorFormat) {
+        const std::vector<struct SensorFrameSize> &frameSize = pair.second;
+        for (auto it = frameSize.begin(); it != frameSize.end(); ++it) {
+            int dist = ::abs((int)it->max_width - maxW) + abs((int)it->max_height - maxH);
+            if (best_dist == -1 || dist < best_dist) {
+                format = pair.first;
+                w = it->max_width;
+                h = it->max_height;
+                best_dist = dist;
             }
-            //for RAW Sensor
-            // travel the tuningSupportSize to check the sensor output size is supported
-            for (auto iter = tuningSupportSize.begin(); iter != tuningSupportSize.end(); ++iter) {
-                LOGD("@%s : tuningSupportSize: %dx%d", __FUNCTION__, (*iter).width, (*iter).height);
-                if((*it).max_width == (*iter).width &&
-                   (*it).max_height == (*iter).height) {
-                    LOGD("@%s Select sensor format: code 0x%x:%s,  Res(%dx%d)", __FUNCTION__,
-                         format, gcu::pixelCode2String(format).c_str(), (*it).max_width, (*it).max_height);
-                    w = (*it).max_width;
-                    h = (*it).max_height;
-                    break;
-                }
-                if(iter == tuningSupportSize.end())
-                    LOGD("@%s : Tuning not supprt the sensor output size %dx%d", __FUNCTION__,
-                         (*it).max_width, (*it).max_height);
-            }
-            // sensor fmt found
-            if(w != 0 && h != 0)
-                break;
         }
     }
 
-    if(frameSize.back().max_width < stream->width ||
-       frameSize.back().max_height < stream->height) {
-        LOGE("@%s : App stream size(%dx%d) larger than Sensor full size(%dx%d), Check camera3_profiles.xml",
-             __FUNCTION__, stream->width, stream->height, frameSize.back().max_width, frameSize.back().max_height);
-        return UNKNOWN_ERROR;
-    }
-    if((w == 0 || h == 0) && frameSize.size() != 0) {
-        w = frameSize.back().max_width;
-        h = frameSize.back().max_height;
-        LOGD("@%s : Can't find the tuning support sensor size, select sensor full size(%dx%d)",
-             __FUNCTION__, w, h);
-    }
+    ALOGI("@%s Selected format %x,(%dx%d)", __FUNCTION__, format, w, h);
 
     return OK;
 }
@@ -2427,6 +2449,7 @@ string GraphConfig::getSinkEntityName(std::shared_ptr<MediaEntity> entity, int p
 
 status_t GraphConfig::getSensorMediaCtlConfig(int32_t cameraId,
                                           int32_t testPatternMode,
+                                          int maxW, int maxH,
                                           MediaCtlConfig *mediaCtlConfig) {
     status_t ret = OK;
 
@@ -2477,7 +2500,7 @@ status_t GraphConfig::getSensorMediaCtlConfig(int32_t cameraId,
 
         int width, height;
         uint32_t format;
-        ret = selectSensorOutputFormat(cameraId, width, height, format);
+        ret = selectSensorOutputFormat(cameraId, maxW, maxH, width, height, format);
         if (ret != OK)
             return UNKNOWN_ERROR;
         addFormatParams(sensorEntityName, width, height, links[0].source.index, format, 0, 0, mediaCtlConfig);

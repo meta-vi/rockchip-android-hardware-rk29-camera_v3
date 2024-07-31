@@ -180,7 +180,8 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
  */
 status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &streams,
                                            uint32_t operationMode,
-                                           int32_t testPatternMode)
+                                           int32_t testPatternMode,
+                                           int maxW, int maxH)
 {
     PERFORMANCE_ATRACE_NAME("GraphConfigManager::configStreams");
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
@@ -251,8 +252,7 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
         mMediaCtlConfigs[i].mParamsOrder.clear();
     }
 
-    ret = gc->getSensorMediaCtlConfig(mCameraId, testPatternMode,
-                                  &mMediaCtlConfigs[CIO2]);
+    ret = gc->getSensorMediaCtlConfig(mCameraId, testPatternMode, maxW, maxH, &mMediaCtlConfigs[CIO2]);
     if (ret != OK)
         LOGE("Couldn't get mediaCtl config");
 
@@ -377,7 +377,7 @@ void GraphConfigManager::getSensorOutputSize(uint32_t &size) {
         size = params[0].width * params[0].height;
     else
         size = 0;
-    LOGI("@%s Curconfig: senor output size:%dx%d", __FUNCTION__,
+    LOGI("@%s Curconfig: sensor output size:%dx%d", __FUNCTION__,
          size == 0 ? 0 : params[0].width,
          size == 0 ? 0 : params[0].height);
 }
