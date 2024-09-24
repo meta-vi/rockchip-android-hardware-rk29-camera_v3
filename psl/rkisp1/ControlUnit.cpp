@@ -468,7 +468,7 @@ ControlUnit::init()
     mSettingsHistory.clear();
 
     /* Set digi gain support */
-    bool supportDigiGain = false;
+    bool supportDigiGain = true;
     if (cap)
         supportDigiGain = cap->digiGainOnSensor();
 
@@ -568,6 +568,11 @@ void RequestCtrlState::init(Camera3Request *req,
     LOGI("%s:%d: request id(%lld), capture_intent(%d)", __FUNCTION__, __LINE__, id, intent);
     ctrlUnitResult->update(ANDROID_CONTROL_CAPTURE_INTENT, entry.data.u8,
                                                            entry.count);
+    
+    /*== vanth: add code ===*/
+    uint8_t aeMode = ANDROID_CONTROL_AE_MODE_OFF;
+    ctrlUnitResult->update(ANDROID_CONTROL_AE_MODE, &aeMode, 1);
+    /*== vanth: end ========*/
 }
 
 ControlUnit::~ControlUnit()
@@ -605,6 +610,7 @@ ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, bool c
     PERFORMANCE_ATRACE_NAME("ControlUnit::configStreams");
     LOGI("@%s %d: configChanged :%d", __FUNCTION__, __LINE__, configChanged);
     status_t status = OK;
+
     if(configChanged) {
         // this will be necessary when configStream called twice without calling
         // destruct function which called in the close camera stack
@@ -613,15 +619,14 @@ ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, bool c
         mSettingsHistory.clear();
 
         struct rkisp_cl_prepare_params_s prepareParams;
-
         memset(&prepareParams, 0, sizeof(struct rkisp_cl_prepare_params_s));
         prepareParams.staticMeta = PlatformData::getStaticMetadata(mCameraId);
         if (prepareParams.staticMeta == nullptr) {
             LOGE("Failed to get camera %d StaticMetadata for CL", mCameraId);
             return UNKNOWN_ERROR;
         }
-
-        //start 3a when config video stream done
+    
+        // start 3a when config video stream done
         for (auto &it : mDevPathsMap) {
             switch (it.first) {
             case KDevPathTypeIspDevNode:
@@ -801,6 +806,7 @@ ControlUnit::handleNewRequest(Message &msg)
     if (status != NO_ERROR) {
         LOGE("Could not process all settings, reporting request as invalid");
     }
+    LOGI("ControlUnit::handleNewRequest %d", status);
 
     status = processRequestForCapture(reqState);
     if (CC_UNLIKELY(status != OK)) {
@@ -957,8 +963,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
                         tempCamMeta.update(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD, &stillCapSync, 1);
                         mStillCapSyncState = STILL_CAP_SYNC_STATE_WAITING_ENGINE_DONE;
                     } else
-                        LOGW("already in stillcap_sync state %d",
-                             mStillCapSyncState);
+                        LOGW("already in stillcap_sync state %d", mStillCapSyncState);
                 }
             }
 
@@ -1003,6 +1008,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
             // set SoC sensor's params
             const CameraMetadata *settings = reqState->request->getSettings();
             processSoCSettings(settings);
+            ALOGI("set SoC sensor's params");
         }
     } else {
         LOGD("@%s %d: reprocess request:%d, no need setFrameParam", __FUNCTION__, __LINE__, reqId);
@@ -1505,7 +1511,7 @@ ControlUnit::handleMetadataReceived(Message &msg) {
     reqState->ctrlUnitResult->append(msg.metas);
     reqState->mClMetaReceived = true;
     if(reqState->mShutterMetaReceived) {
-        mMetadata->writeRestMetadata(*reqState);
+        // mMetadata->writeRestMetadata(*reqState);
         reqState->request->notifyFinalmetaFilled();
     }
 

@@ -118,7 +118,8 @@ status_t RKISP2JpegEncodeTask::handleMessageSettings(RKISP2ProcUnitSettings &pro
 
         entry = settings->find(ANDROID_CONTROL_AE_MODE);
         if (entry.count == 1) {
-            aeMode = entry.data.u8[0];
+            // aeMode = entry.data.u8[0];
+            aeMode =  ANDROID_CONTROL_AE_MODE_OFF;
         }
     } else {
         LOGE("JPEG settings, no settings in request - BUG");

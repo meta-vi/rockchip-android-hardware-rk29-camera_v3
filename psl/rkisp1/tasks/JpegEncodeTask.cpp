@@ -64,6 +64,7 @@ JpegEncodeTask::init()
     status_t status = NO_ERROR;
 
 #ifdef RK_HW_JPEG_ENCODE
+    ALOGI("Init with ImgHWEncoder!");
     mImgEncoder = std::make_shared<ImgHWEncoder>(mCameraId);
 #else
     mImgEncoder = std::make_shared<ImgEncoder>(mCameraId);
@@ -116,7 +117,8 @@ status_t JpegEncodeTask::handleMessageSettings(ProcUnitSettings &procSettings)
 
         entry = settings->find(ANDROID_CONTROL_AE_MODE);
         if (entry.count == 1) {
-            aeMode = entry.data.u8[0];
+            // aeMode = entry.data.u8[0];
+            aeMode =  ANDROID_CONTROL_AE_MODE_OFF;
         }
     } else {
         LOGE("JPEG settings, no settings in request - BUG");
@@ -280,7 +282,6 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     status_t status = NO_ERROR;
 
-    LOGI("begin jpeg encoder");
     ImgEncoder::EncodePackage package;
     /* ImgHWEncoder::EncodePackage package; */
 
@@ -373,7 +374,6 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
     } else {
         LOGE("Attempt to remove item from empty EXIF cache. - BUG");
     }
-
     return status;
 }
 
